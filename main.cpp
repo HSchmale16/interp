@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <cstdio>
 
 enum command_type {
     PUSH = 0,   //!< push <number1> <number2> <number n> on to stack
@@ -14,11 +15,12 @@ enum command_type {
     DUP,        //!< Pushes a copy of whatever was at the top of the stack
     PRINT,      //!< Prints the value at the top of the stack
     NOP,        //!< no operation
+    STACKSZ,    //!< push the current stack size to the top of the stack
     HLT         //!< Halt the machine
 };
 const std::vector<std::string> command_type_Strings = {
     "PUSH", "POP", "IFEQ", "JUMP", "ADD", "DUP",
-    "PRINT", "NOP", "HLT"
+    "PRINT", "NOP", "STACKSZ", "HLT"
 };
 
 
@@ -90,17 +92,42 @@ private:
     }
 
     void popStack(int times) {
-        std::cerr << "pop:" << _stack.size() << ' ';
+        //std::cerr << "pop:" << _stack.size() << ' ';
         int i = 0;
         do {
             _stack.pop_back();
             i++;
-        }while(i < times);
-        std::cerr << _stack.size() << std::endl;
+        } while(i < times);
+        //std::cerr << _stack.size() << std::endl;
     }
 
     void print() {
-        std::cout << _stack.back() << std::endl;
+        if(isprint(_stack.back())) {
+            std::cout << (char)_stack.back();
+        } else {
+            std::cout << _stack.back();
+        }
+        std::cout.flush();
+    }
+
+    void dup() {
+        _stack.push_back(_stack.back());
+    }
+
+    void add() {
+        int a = _stack.back();
+        _stack.pop_back();
+        int b = _stack.back();
+        _stack.pop_back();
+        _stack.push_back(a + b);
+    }
+
+    void jump(int pos) {
+        if(_instruct.find(pos) != _instruct.end()) {
+            _progCounter = pos;
+        }else{
+            std::cerr << "Nonexistant Instruction to jump" << std::endl;
+        }
     }
 public:
     Interp() {}
@@ -113,6 +140,13 @@ public:
 
     void addInstruct(command cmd) {
         _instruct[cmd.lineno] = cmd;
+    }
+
+    int stacksz() {
+        int sz = _stack.size();
+        _stack.push_back(sz);
+        //std::cerr << "ssz: " << sz << std::endl;
+        return sz;
     }
 
     bool step() {
@@ -129,17 +163,44 @@ public:
         case PUSH:
             this->pushStack(cmd.operands);
             break;
+        case ADD:
+            this->add();
+            break;
         case PRINT:
             this->print();
+            break;
+        case DUP:
+            this->dup();
+            break;
+        case STACKSZ:
+            this->stacksz();
+            break;
+        case JUMP:
+            if(cmd.operands.size() < 1){
+                std::cerr << "JUMP Command is invalid\n";
+                return false;
+            }else
+                this->jump(cmd.operands[0]);
+            return true;
+        case IFEQ:
+            if(cmd.operands.size() < 1){
+                std::cerr << "IFEQ is invalid\n";
+                return false;
+            }else{
+                if(_stack.back() == 0){
+                    this->jump(cmd.operands[0]);
+                    return true;
+                }
+            }
             break;
         case HLT:
             return false;
         }
         // update prog counter
         auto instructIt = _instruct.find(_progCounter);
-        if(instructIt == _instruct.end()){
+        if(instructIt == _instruct.end()) {
             return false;
-        }else{
+        } else {
             instructIt++;
         }
         _progCounter = instructIt->first;
@@ -162,6 +223,5 @@ int main() {
     }
     interp.startInterp();
     while(interp.step());
-
     return 0;
 }
