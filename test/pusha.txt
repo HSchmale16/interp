@@ -1,0 +1,7 @@
+100     PUSH 10 20
+200     PRINT
+300     POP
+350     PRINT
+400     PUSHA
+500     PRINT
+10000   HLT

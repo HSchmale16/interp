@@ -16,11 +16,14 @@ enum command_type {
     PRINT,      //!< Prints the value at the top of the stack
     NOP,        //!< no operation
     STACKSZ,    //!< push the current stack size to the top of the stack
+    PUSHA,      //!< pushes the value in _acc to stack top.
+    GOSUB,      //!< jumps to a address but pushes next location onto stack
+    RETSUB,     //!<
     HLT         //!< Halt the machine
 };
 const std::vector<std::string> command_type_Strings = {
     "PUSH", "POP", "IFEQ", "JUMP", "ADD", "DUP",
-    "PRINT", "NOP", "STACKSZ", "HLT"
+    "PRINT", "NOP", "STACKSZ", "PUSHA", "HLT"
 };
 
 
@@ -84,6 +87,7 @@ private:
     std::vector<int> _stack;
     int _progCounter;
     int _maxInstruct;
+    int _acc;
 
     void pushStack(std::vector<int> values) {
         for(size_t i = 0; i < values.size(); i++) {
@@ -91,14 +95,21 @@ private:
         }
     }
 
+    void pushStack(int val){
+        _stack.push_back(val);
+    }
+
+    /** Pops x values from the stack. The last value popped gets placed
+     *  in the accumulator.
+     */
     void popStack(int times) {
-        //std::cerr << "pop:" << _stack.size() << ' ';
-        int i = 0;
+        int i = 0, x;
         do {
+            x = _stack.back();
             _stack.pop_back();
             i++;
         } while(i < times);
-        //std::cerr << _stack.size() << std::endl;
+        _acc = x;
     }
 
     void print() {
@@ -136,6 +147,7 @@ public:
         _progCounter = _instruct.begin()->first;
         _maxInstruct = _instruct.rbegin()->first;
         _stack.clear();
+        _acc = 0;
     }
 
     void addInstruct(command cmd) {
@@ -162,6 +174,9 @@ public:
             break;
         case PUSH:
             this->pushStack(cmd.operands);
+            break;
+        case PUSHA:
+            this->pushStack(_acc);
             break;
         case ADD:
             this->add();
@@ -212,14 +227,16 @@ int main() {
     std::string line;
     Interp interp;
 
+    int fileLineno = 1;
     while(getline(std::cin, line)) {
         command cmd = parseCommand(line);
         if(cmd.lineno == -1) {
-            std::cout << "BAD COMMAND" << std::endl;
+            std::cout << "BAD COMMAND " << fileLineno << std::endl;
         } else {
             //printCommand(cmd);
             interp.addInstruct(cmd);
         }
+        fileLineno++;
     }
     interp.startInterp();
     while(interp.step());
