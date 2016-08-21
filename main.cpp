@@ -1,3 +1,8 @@
+/**\file main.cpp
+ * \author Henry J Schmale
+ * \brief A very simple stack machine language with a single register.
+ */
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -6,31 +11,34 @@
 #include <sstream>
 #include <cstdio>
 
+/** \brief Defines the commands that the interpretor understands.
+ */
 enum command_type {
-    PUSH = 0,   //!< push <number1> <number2> <number n> on to stack
-    POP,        //!< remove <x> values from the top of the stack
-    IFEQ,       //!< if stack top is 0 jump to <x> instruction
-    JUMP,       //!< Jump unconditionally to <x> instruction
+    PUSH = 0,   //!< push n1 n2 .. nN on to stack
+    POP,        //!< remove > values from the top of the stack
+    IFEQ,       //!< if stack top is 0 jump to x instruction
+    JUMP,       //!< Jump unconditionally to x instruction
     ADD,        //!< pops top 2 values and adds them, then pushes the result
     DUP,        //!< Pushes a copy of whatever was at the top of the stack
     PRINT,      //!< Prints the value at the top of the stack
     NOP,        //!< no operation
     STACKSZ,    //!< push the current stack size to the top of the stack
     PUSHA,      //!< pushes the value in _acc to stack top.
-    GOSUB,      //!< jumps to a address but pushes next location onto stack
-    RETSUB,     //!<
+    LOADA,      //!< loads value at stack top into _acc
     HLT         //!< Halt the machine
 };
 const std::vector<std::string> command_type_Strings = {
     "PUSH", "POP", "IFEQ", "JUMP", "ADD", "DUP",
-    "PRINT", "NOP", "STACKSZ", "PUSHA", "HLT"
+    "PRINT", "NOP", "STACKSZ", "PUSHA", "LOADA",
+    "HLT"
 };
 
-
+/** \brief Defines a single command
+ */
 struct command {
-    int lineno;
-    command_type type;
-    std::vector<int> operands;
+    int lineno;                 //!< The memory address of command
+    command_type type;          //!< Types of commands.
+    std::vector<int> operands;  //!< Operands of the command
 
     command() {
         lineno = -1;
@@ -47,6 +55,8 @@ command_type getCommandType(std::string cmd) {
             return static_cast<command_type>(i);
         }
     }
+    std::cerr << "WARNING: Unknown instruction converted to NOP"
+              << std::endl;
     return NOP;
 }
 
@@ -56,13 +66,24 @@ bool verifyCommand(const command& command) {
     return false;
 }
 
+/**\brief Parse a single instruction line
+ * \return a command struct. lineno will be -1 on error
+ */
 command parseCommand(std::string str) {
     command cmd;
+    if(str[0] == '#'){
+        // is a comment
+        cmd.lineno = -2;
+        return cmd;
+    }
+
     std::stringstream sstr(str);
     std::string word;
-    sstr >> cmd.lineno;                 //!< fetch the address location
-    sstr >> word;                       //!< load the instruction
+    sstr >> cmd.lineno;                 // fetch the address location
+    sstr >> word;                       // load the instruction
     cmd.type = getCommandType(word);
+
+    // parse out the operands
     int operand;
     while(sstr >> operand) {
         cmd.operands.push_back(operand);
@@ -79,11 +100,12 @@ void printCommand(command cmd) {
     std::cout << std::endl;
 }
 
-/** The interpretor or virtual machine
+/** The virtual machine
  */
 class Interp {
 private:
     std::map<int, command> _instruct;
+    std::map<command_type, int> _instructHit;
     std::vector<int> _stack;
     int _progCounter;
     int _maxInstruct;
@@ -113,10 +135,11 @@ private:
     }
 
     void print() {
-        if(isprint(_stack.back())) {
-            std::cout << (char)_stack.back();
+        int chr = _stack.back();
+        if(isprint(chr) || iscntrl(chr)) {
+            std::cout << (char)chr;
         } else {
-            std::cout << _stack.back();
+            std::cout << chr;
         }
         std::cout.flush();
     }
@@ -140,9 +163,15 @@ private:
             std::cerr << "Nonexistant Instruction to jump" << std::endl;
         }
     }
+
+    void loada() {
+        _acc = _stack.back();
+    }
 public:
     Interp() {}
 
+    /**\todo Check to make sure there is a halt in the instructions
+     */
     void startInterp() {
         _progCounter = _instruct.begin()->first;
         _maxInstruct = _instruct.rbegin()->first;
@@ -161,8 +190,12 @@ public:
         return sz;
     }
 
+    /**\brief Steps the virtual machine
+     * \return 1 if the machine should HALT
+     */
     bool step() {
         command& cmd = _instruct[_progCounter];
+        _instructHit[cmd.type]++;
         switch(cmd.type) {
         case NOP: // No action
             break;
@@ -177,6 +210,9 @@ public:
             break;
         case PUSHA:
             this->pushStack(_acc);
+            break;
+        case LOADA:
+            this->loada();
             break;
         case ADD:
             this->add();
@@ -204,6 +240,7 @@ public:
             }else{
                 if(_stack.back() == 0){
                     this->jump(cmd.operands[0]);
+                    // this command modifies the program counter
                     return true;
                 }
             }
@@ -231,7 +268,9 @@ int main() {
     while(getline(std::cin, line)) {
         command cmd = parseCommand(line);
         if(cmd.lineno == -1) {
-            std::cout << "BAD COMMAND " << fileLineno << std::endl;
+            std::cerr << "BAD COMMAND " << fileLineno << std::endl;
+        } else if(cmd.lineno < 0) {
+            // capture other invalid commands that aren't syntax errors
         } else {
             //printCommand(cmd);
             interp.addInstruct(cmd);

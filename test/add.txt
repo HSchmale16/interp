@@ -1,0 +1,14 @@
+# Adds a series of numbers
+100     PUSH 10 20 30 40 50 60 70       # push numbers to add
+200     ADD
+300     STACKSZ                         
+500     PUSH -1
+600     ADD
+700     IFEQ 800                        # check if stack size is 1
+725     POP                             # pop test value
+750     JUMP 200                        # add the next two numbers
+800     POP                             # pop test value
+900     PRINT                           # print result
+950     PUSH 10                         # print new line
+975     PRINT
+1000    HLT                             # halt machine
