@@ -16,7 +16,7 @@
  */
 enum command_type {
     PUSH = 0,   //!< push n1 n2 .. nN on to stack
-    POP,        //!< remove > values from the top of the stack
+    POP,        //!< remove n1 values from the top of the stack
     IFEQ,       //!< if stack top is 0 jump to x instruction
     IFAC,       //!< if stack top is equal to _acc jump to instruction
     JUMP,       //!< Jump unconditionally to x instruction
@@ -117,10 +117,6 @@ private:
         for(size_t i = 0; i < values.size(); i++) {
             _stack.push_back(values[i]);
         }
-    }
-
-    void pushStack(int val){
-        _stack.push_back(val);
     }
 
     /** Pops x values from the stack. The last value popped gets placed
