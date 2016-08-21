@@ -10,6 +10,7 @@
 #include <map>
 #include <sstream>
 #include <cstdio>
+#include <unistd.h>
 
 /** \brief Defines the commands that the interpretor understands.
  */
@@ -17,6 +18,7 @@ enum command_type {
     PUSH = 0,   //!< push n1 n2 .. nN on to stack
     POP,        //!< remove > values from the top of the stack
     IFEQ,       //!< if stack top is 0 jump to x instruction
+    IFAC,       //!< if stack top is equal to _acc jump to instruction
     JUMP,       //!< Jump unconditionally to x instruction
     ADD,        //!< pops top 2 values and adds them, then pushes the result
     DUP,        //!< Pushes a copy of whatever was at the top of the stack
@@ -28,8 +30,8 @@ enum command_type {
     HLT         //!< Halt the machine
 };
 const std::vector<std::string> command_type_Strings = {
-    "PUSH", "POP", "IFEQ", "JUMP", "ADD", "DUP",
-    "PRINT", "NOP", "STACKSZ", "PUSHA", "LOADA",
+    "PUSH", "POP", "IFEQ", "IFAC", "JUMP", "ADD",
+    "DUP", "PRINT", "NOP", "STACKSZ", "PUSHA", "LOADA",
     "HLT"
 };
 
@@ -125,16 +127,15 @@ private:
      *  in the accumulator.
      */
     void popStack(int times) {
-        int i = 0, x;
+        int i = 0;
         do {
-            x = _stack.back();
             _stack.pop_back();
             i++;
         } while(i < times);
-        _acc = x;
     }
 
     void print() {
+        /*
         int chr = _stack.back();
         if(isprint(chr) || iscntrl(chr)) {
             std::cout << (char)chr;
@@ -142,6 +143,8 @@ private:
             std::cout << chr;
         }
         std::cout.flush();
+        */
+        std::cout << _stack.back() << "\n";
     }
 
     void dup() {
@@ -228,11 +231,23 @@ public:
             break;
         case JUMP:
             if(cmd.operands.size() < 1){
-                std::cerr << "JUMP Command is invalid\n";
+                std::cerr << "JUMP is invalid\n";
                 return false;
             }else
                 this->jump(cmd.operands[0]);
             return true;
+        case IFAC:
+            if(cmd.operands.size() < 1){
+                std::cerr << "IFAC is invalid\n";
+                return false;
+            }else{
+                if(_stack.back() == _acc) {
+                    this->jump(cmd.operands[0]);
+                    // modifies program counter
+                    return true;
+                }
+            }
+            break;
         case IFEQ:
             if(cmd.operands.size() < 1){
                 std::cerr << "IFEQ is invalid\n";

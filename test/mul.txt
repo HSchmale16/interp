@@ -1,0 +1,20 @@
+# Attempt to multiply two numbers
+100     PUSH 100 500        # push the two numbers to multiply
+200     LOADA
+300     POP                 # pop init value into _acc
+400     STACKSZ             # push current stack size
+500     IFAC 900            # if stack size is equal to acc
+600     POP                 # pop the test value
+700     DUP                 # add next number to multiply
+800     JUMP 400            # test stack size again
+900     POP                 # restore the stack
+950     ADD                 # begin collapsing the stack
+1000    STACKSZ
+1100    PUSH -1
+1200    ADD
+1300    IFEQ 1600           # if stack size is one go to print logic
+1400    POP                 # otherwise restore stack and
+1500    JUMP 950            # continue adding
+1600    POP                 # restore stack
+1700    PRINT               # print result
+2000    HLT
